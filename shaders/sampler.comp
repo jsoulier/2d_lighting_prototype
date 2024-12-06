@@ -1,0 +1,18 @@
+#version 450
+
+layout(local_size_x = 1) in;
+
+layout(set = 0, binding = 0) uniform sampler2D s_texture;
+layout(set = 1, binding = 0) buffer t_buffer
+{
+    vec4 b_buffer;
+};
+layout(set = 2, binding = 0) uniform t_uv
+{
+    vec2 u_uv;
+};
+
+void main()
+{
+    b_buffer = texture(s_texture, u_uv);
+}
