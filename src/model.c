@@ -31,6 +31,7 @@ struct
     int num_indices;
     int height;
     int illuminance;
+    char name[256];
 }
 static models[MODEL_COUNT];
 
@@ -222,7 +223,7 @@ bool model_init(
     for (model_t model = 0; model < MODEL_COUNT; model++)
     {
         const char* src = names[model];
-        char dst[256] = {0};
+        char* dst = models[model].name;
         for (int i = 0; i < 256 && src[i]; i++)
         {
             dst[i] = tolower(src[i]);
@@ -308,4 +309,11 @@ int model_get_illuminance(
 {
     assert(model < MODEL_COUNT);
     return models[model].illuminance;
+}
+
+const char* model_get_name(
+    const model_t model)
+{
+    assert(model < MODEL_COUNT);
+    return models[model].name;
 }

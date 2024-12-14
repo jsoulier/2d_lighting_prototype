@@ -1,6 +1,7 @@
 #include <math.h>
 #include <stdbool.h>
 #include "camera.h"
+#include "config.h"
 #include "helpers.h"
 
 enum
@@ -317,13 +318,20 @@ void camera_update(
     camera->bounds[TOP_RIGHT][1] = 1.0f;
     camera->bounds[BOTTOM_RIGHT][0] = 1.0f;
     camera->bounds[BOTTOM_RIGHT][1] = -1.0f;
+    const float y[4] =
+    {
+        [TOP_LEFT] = 0.0f,
+        [BOTTOM_LEFT] = MODEL_MAX_HEIGHT,
+        [TOP_RIGHT] = 0.0f,
+        [BOTTOM_RIGHT] = MODEL_MAX_HEIGHT,
+    };
     for (int i = 0; i < 4; i++)
     {
         camera_project(
             camera,
             &camera->bounds[i][0],
             &camera->bounds[i][1],
-            0.0f);
+            y[i]);
     }
 }
 

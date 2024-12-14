@@ -142,7 +142,7 @@ void database_get_state(
     }
     else
     {
-        *model = MODEL_COUNT;
+        *model = 0;
         *x = 0.0f;
         *z = 0.0f;
     }

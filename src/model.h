@@ -43,3 +43,5 @@ int model_get_height(
     const model_t model);
 int model_get_illuminance(
     const model_t model);
+const char* model_get_name(
+    const model_t model);

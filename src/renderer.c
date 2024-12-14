@@ -683,7 +683,7 @@ void renderer_update(
     camera_update(&sun_camera);
 }
 
-void renderer_begin_frame()
+void renderer_draw()
 {
     SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device);
     if (!commands)
@@ -813,6 +813,55 @@ void renderer_get_position(
     SDL_UnmapGPUTransferBuffer(device, sampler_tbo);
 }
 
+void renderer_highlight(
+    const model_t model,
+    const float x,
+    const float y,
+    const float z)
+{
+    SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device);
+    if (!commands)
+    {
+        SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
+        return;
+    }
+    {
+        SDL_PushGPUDebugGroup(commands, "highlight");
+        SDL_GPUColorTargetInfo cti = {0};
+        cti.load_op = SDL_GPU_LOADOP_LOAD;
+        cti.store_op = SDL_GPU_STOREOP_STORE;
+        cti.texture = textures[TEXTURE_COMPOSITE];
+        SDL_GPUDepthStencilTargetInfo dsti = {0};
+        dsti.load_op = SDL_GPU_LOADOP_LOAD;
+        dsti.store_op = SDL_GPU_STOREOP_DONT_CARE;
+        dsti.texture = textures[TEXTURE_MAIN_DEPTH];
+        SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(commands, &cti, 1, &dsti);
+        if (!pass)
+        {
+            SDL_Log("Failed to begin render pass: %s", SDL_GetError());
+            goto error;
+        }
+        const float instance[3] = { x, y, z };
+        SDL_GPUBufferBinding vbb = {0};
+        SDL_GPUBufferBinding ibb = {0};
+        vbb.buffer = model_get_vbo(model);
+        ibb.buffer = model_get_ibo(model);
+        SDL_BindGPUGraphicsPipeline(pass, graphics[GRAPHICS_HIGHLIGHT]);
+        SDL_PushGPUVertexUniformData(commands, 0, main_camera.matrix, 64);
+        SDL_PushGPUVertexUniformData(commands, 1, instance, sizeof(instance));
+        SDL_BindGPUVertexBuffers(pass, 0, &vbb, 1);
+        SDL_BindGPUIndexBuffer(pass, &ibb, SDL_GPU_INDEXELEMENTSIZE_32BIT);
+        SDL_DrawGPUIndexedPrimitives(pass, model_get_num_indices(model), 1, 0, 0, 0);
+        SDL_EndGPURenderPass(pass);
+        SDL_PopGPUDebugGroup(commands);
+    }
+    goto success;
+error:
+    SDL_PopGPUDebugGroup(commands);
+success:
+    SDL_SubmitGPUCommandBuffer(commands);
+}
+
 void renderer_composite()
 {
     SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device);
@@ -939,56 +988,7 @@ success:
     SDL_SubmitGPUCommandBuffer(commands);
 }
 
-void renderer_highlight(
-    const model_t model,
-    const float x,
-    const float y,
-    const float z)
-{
-    SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device);
-    if (!commands)
-    {
-        SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
-        return;
-    }
-    {
-        SDL_PushGPUDebugGroup(commands, "highlight");
-        SDL_GPUColorTargetInfo cti = {0};
-        cti.load_op = SDL_GPU_LOADOP_LOAD;
-        cti.store_op = SDL_GPU_STOREOP_STORE;
-        cti.texture = textures[TEXTURE_COMPOSITE];
-        SDL_GPUDepthStencilTargetInfo dsti = {0};
-        dsti.load_op = SDL_GPU_LOADOP_LOAD;
-        dsti.store_op = SDL_GPU_STOREOP_DONT_CARE;
-        dsti.texture = textures[TEXTURE_MAIN_DEPTH];
-        SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(commands, &cti, 1, &dsti);
-        if (!pass)
-        {
-            SDL_Log("Failed to begin render pass: %s", SDL_GetError());
-            goto error;
-        }
-        const float instance[3] = { x, y, z };
-        SDL_GPUBufferBinding vbb = {0};
-        SDL_GPUBufferBinding ibb = {0};
-        vbb.buffer = model_get_vbo(model);
-        ibb.buffer = model_get_ibo(model);
-        SDL_BindGPUGraphicsPipeline(pass, graphics[GRAPHICS_HIGHLIGHT]);
-        SDL_PushGPUVertexUniformData(commands, 0, main_camera.matrix, 64);
-        SDL_PushGPUVertexUniformData(commands, 1, instance, sizeof(instance));
-        SDL_BindGPUVertexBuffers(pass, 0, &vbb, 1);
-        SDL_BindGPUIndexBuffer(pass, &ibb, SDL_GPU_INDEXELEMENTSIZE_32BIT);
-        SDL_DrawGPUIndexedPrimitives(pass, model_get_num_indices(model), 1, 0, 0, 0);
-        SDL_EndGPURenderPass(pass);
-        SDL_PopGPUDebugGroup(commands);
-    }
-    goto success;
-error:
-    SDL_PopGPUDebugGroup(commands);
-success:
-    SDL_SubmitGPUCommandBuffer(commands);
-}
-
-void renderer_end_frame()
+void renderer_blit()
 {
     SDL_GPUCommandBuffer* commands = SDL_AcquireGPUCommandBuffer(device);
     if (!commands)
@@ -1002,9 +1002,9 @@ void renderer_end_frame()
         SDL_Log("Failed to aqcuire swapchain image: %s", SDL_GetError());
         goto error;
     }
-    if (!swapchain || width == 0 || height == 0)
+    if (!commands || width == 0 || height == 0)
     {
-        goto success;
+        return;
     }
     {
         SDL_PushGPUDebugGroup(commands, "blit");

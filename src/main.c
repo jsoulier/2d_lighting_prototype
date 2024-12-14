@@ -10,82 +10,6 @@
 #include "model.h"
 #include "world.h"
 
-static SDL_GPUDevice* device;
-static SDL_Window* window;
-static model_t selection;
-
-static void move(
-    float* x,
-    float* z,
-    const float dt)
-{
-    const bool* keys = SDL_GetKeyboardState(NULL);
-    const float speed = 500.0f;
-    float dx = 0.0f;
-    float dz = 0.0f;
-    if (keys[SDL_SCANCODE_W])
-    {
-        dz -= speed;
-    }
-    else if (keys[SDL_SCANCODE_S])
-    {
-        dz += speed;
-    }
-    if (keys[SDL_SCANCODE_D])
-    {
-        dx += speed;
-    }
-    else if (keys[SDL_SCANCODE_A])
-    {
-        dx -= speed;
-    }
-    *x += dx * dt;
-    *z += dz * dt;
-}
-
-static model_t pick(
-    float* x,
-    float* z)
-{
-    float mx;
-    float my;
-    int size;
-    SDL_GetWindowSizeInPixels(window, &size, NULL);
-    SDL_GetMouseState(&mx, &my);
-    *x = mx;
-    size /= 2;
-    renderer_get_position(x, &my, z);
-    const float bias = 0.01f;
-    const float center = MODEL_SIZE / 2.0f;
-    *z -= bias;
-    if (mx < size)
-    {
-        *x -= bias;
-    }
-    else
-    {
-        *x += bias;
-    }
-    SDL_Log("%f, %f", *x, *z);
-    if (*x > 0.0f)
-    {
-        *x = (int) (*x + center) / MODEL_SIZE;
-    }
-    else
-    {
-        *x = (int) (*x - center) / MODEL_SIZE;
-    }
-    if (*z < 0.0f)
-    {
-        *z = (int) (*z - center) / MODEL_SIZE;
-    }
-    else
-    {
-        *z = (int) (*z + center) / MODEL_SIZE;
-    }
-    return world_get_model(*x, *z);
-}
-
 int main(int argc, char** argv)
 {
     if (!SDL_Init(SDL_INIT_VIDEO))
@@ -93,14 +17,13 @@ int main(int argc, char** argv)
         SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
         return EXIT_FAILURE;
     }
-    window = SDL_CreateWindow("prototype", RENDERER_WIDTH * 2.0f, RENDERER_HEIGHT * 2.0f, 0);
+    SDL_Window* window = window = SDL_CreateWindow("prototype", RENDERER_WIDTH, RENDERER_HEIGHT, 0);
     if (!window)
     {
         SDL_Log("Failed to create window: %s", SDL_GetError());
         return EXIT_FAILURE;
     }
-    SDL_SetWindowResizable(window, true);
-    device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
+    SDL_GPUDevice* device = SDL_CreateGPUDevice(SDL_GPU_SHADERFORMAT_SPIRV, true, NULL);
     if (!device)
     {
         SDL_Log("Failed to create device: %s", SDL_GetError());
@@ -116,14 +39,16 @@ int main(int argc, char** argv)
         SDL_Log("Failed to initialize database");
         return EXIT_FAILURE;
     }
-    uint64_t t1 = SDL_GetPerformanceCounter();
-    uint64_t t2 = 0;
     float x = 0.0f;
     float z = 0.0f;
-    database_get_state(&selection, &x, &z);
-    float cooldown = 0.0f;
+    model_t selected;
+    database_get_state(&selected, &x, &z);
+    SDL_SetWindowResizable(window, true);
+    SDL_SetWindowTitle(window, model_get_name(selected));
     bool running = true;
-    int model_cooldown = 0;
+    float cooldown = 0.0f;
+    uint64_t t1 = SDL_GetPerformanceCounter();
+    uint64_t t2 = 0;
     while (running)
     {
         t2 = t1;
@@ -139,55 +64,125 @@ int main(int argc, char** argv)
                 running = false;
                 break;
             case SDL_EVENT_MOUSE_WHEEL:
-                if (!(SDL_GetMouseState(NULL, NULL) & SDL_BUTTON_MMASK))
+                selected += event.wheel.y;
+                if (selected < 0)
                 {
-                    selection += event.wheel.y;
-                    if (selection < 0)
-                    {
-                        selection = MODEL_COUNT - 1;
-                    }
-                    else if (selection >= MODEL_COUNT)
-                    {
-                        selection = 0;
-                    }
+                    selected = MODEL_COUNT - 1;
                 }
+                else if (selected >= MODEL_COUNT)
+                {
+                    selected = 0;
+                }
+                SDL_SetWindowTitle(window, model_get_name(selected));
                 break;
             }
         }
-        move(&x, &z, dt);
-        float x1;
-        float z1;
-        float x2;
-        float z2;
-        renderer_update(x, z);
-        renderer_get_bounds(&x1, &z1, &x2, &z2);
-        world_update(device, x1, z1, x2, z2);
-        renderer_begin_frame();
+
+        /* move */
+        {
+            const bool* keys = SDL_GetKeyboardState(NULL);
+            float dx = 0.0f;
+            float dz = 0.0f;
+            if (keys[SDL_SCANCODE_W])
+            {
+                dz -= MOVE_SPEED;
+            }
+            else if (keys[SDL_SCANCODE_S])
+            {
+                dz += MOVE_SPEED;
+            }
+            if (keys[SDL_SCANCODE_D])
+            {
+                dx += MOVE_SPEED;
+            }
+            else if (keys[SDL_SCANCODE_A])
+            {
+                dx -= MOVE_SPEED;
+            }
+            x += dx * dt;
+            z += dz * dt;
+        }
+
+        /* update */
+        {
+            float x1;
+            float z1;
+            float x2;
+            float z2;
+            renderer_update(x, z);
+            renderer_get_bounds(&x1, &z1, &x2, &z2);
+            world_update(device, x1, z1, x2, z2);
+        }
+
+        renderer_draw();
         renderer_composite();
-        float bx;
-        float bz;
-        const model_t model = pick(&bx, &bz);
-        const int buttons = SDL_GetMouseState(NULL, NULL);
-        if (buttons & SDL_BUTTON_LMASK)
+
+        /* pick */
         {
-            world_set_model(selection, bx, bz);
+            float mx;
+            float my;
+            float mz;
+            int width;
+            SDL_GetWindowSizeInPixels(window, &width, NULL);
+            SDL_GetMouseState(&mx, &my);
+            const float sx = mx;
+            renderer_get_position(&mx, &my, &mz);
+            width /= 2;
+            mz -= PICK_BIAS;
+            if (sx < width)
+            {
+                mx -= PICK_BIAS;
+            }
+            else
+            {
+                mx += PICK_BIAS;
+            }
+            if (mx > 0.0f)
+            {
+                mx = (int) (mx + MODEL_SIZE / 2.0f) / MODEL_SIZE;
+            }
+            else
+            {
+                mx = (int) (mx - MODEL_SIZE / 2.0f) / MODEL_SIZE;
+            }
+            if (mz < 0.0f)
+            {
+                mz = (int) (mz - MODEL_SIZE / 2.0f) / MODEL_SIZE;
+            }
+            else
+            {
+                mz = (int) (mz + MODEL_SIZE / 2.0f) / MODEL_SIZE;
+            }
+            const int buttons = SDL_GetMouseState(NULL, NULL);
+            if (buttons & SDL_BUTTON_RMASK)
+            {
+                world_set_model(selected, mx, mz);
+            }
+            else if (buttons & SDL_BUTTON_LMASK)
+            {
+                world_set_model(0, mx, mz);
+            }
+            const model_t picked = world_get_model(mx, mz);
+            if (picked != MODEL_COUNT)
+            {
+                mx *= MODEL_SIZE;
+                mz *= MODEL_SIZE;
+                renderer_highlight(picked, mx, 0.0f, mz);
+            }
         }
-        if (model != MODEL_COUNT)
-        {
-            bx *= MODEL_SIZE;
-            bz *= MODEL_SIZE;
-            renderer_highlight(model, bx, 0.0f, bz);
-        }
-        renderer_end_frame(&selection);
+
+        renderer_blit();
+
+        /* commit */
         cooldown += dt;
         if (cooldown > DATABASE_COOLDOWN && database_commit())
         {
-            database_set_state(selection, x, z);
+            database_set_state(selected, x, z);
             cooldown = 0.0f;
         }
     }
     world_free(device);
-    database_set_state(selection, x, z);
+    database_set_state(selected, x, z);
     database_free();
     renderer_free();
     SDL_DestroyGPUDevice(device);
