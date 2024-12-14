@@ -30,9 +30,9 @@ bool raycast(
     vec3 direction = dst - src;
     spread = min(length(direction), spread);
     direction = normalize(direction);
-    const float penetration = MODEL_SIZE;
-    const float step = MODEL_SIZE;
-    for (float i = penetration; i < spread - penetration; i += step)
+    const float penetration = length(vec2(MODEL_SIZE, MODEL_SIZE));
+    const float step = 1.0f;
+    for (float i = 0.0f; i < spread - penetration; i += step)
     {
         const vec3 position = src + direction * i;
         vec4 uv = u_matrix * vec4(position, 1.0f);
@@ -44,7 +44,7 @@ bool raycast(
             break;
         }
         const vec3 neighbor = texture(s_position, uv.xy).xyz;
-        if (neighbor.y >= position.y)
+        if (neighbor.y > position.y)
         {
             return false;
         }

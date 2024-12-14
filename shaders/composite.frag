@@ -3,11 +3,10 @@
 layout(location = 0) in vec2 i_uv;
 layout(location = 0) out vec4 o_color;
 layout(set = 2, binding = 0) uniform sampler2D s_main_color;
-layout(set = 2, binding = 1) uniform sampler2D s_main_depth;
-layout(set = 2, binding = 2) uniform sampler2D s_main_position;
-layout(set = 2, binding = 3) uniform sampler2D s_main_normal;
-layout(set = 2, binding = 4) uniform sampler2D s_topdown_light;
-layout(set = 2, binding = 5) uniform sampler2D s_sun_depth;
+layout(set = 2, binding = 1) uniform sampler2D s_main_position;
+layout(set = 2, binding = 2) uniform sampler2D s_main_normal;
+layout(set = 2, binding = 3) uniform sampler2D s_topdown_light;
+layout(set = 2, binding = 4) uniform sampler2D s_sun_depth;
 layout(set = 3, binding = 0) uniform t_topdown
 {
     mat4 u_topdown;
@@ -79,8 +78,8 @@ float get_light(
 {
     vec4 uv = u_topdown * vec4(position, 1.0f);
     uv.xy = uv.xy * 0.5f + 0.5f;
-    const int kernel = 4;
-    const vec2 size = 1.0f / vec2(textureSize(s_topdown_light, 0)) * 5.0f;
+    const int kernel = 5;
+    const vec2 size = 1.0f / vec2(textureSize(s_topdown_light, 0)) * 1.0f;
     float light = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
     {
@@ -97,11 +96,6 @@ float get_light(
 
 void main()
 {
-    const float depth = texture(s_main_depth, i_uv).x;
-    if (depth >= 1.0f)
-    {
-        return;
-    }
     const vec4 color = texture(s_main_color, i_uv);
     const vec3 position = texture(s_main_position, i_uv).xyz;
     const vec3 normal = texture(s_main_normal, i_uv).xyz;

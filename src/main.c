@@ -66,6 +66,7 @@ static model_t pick(
     {
         *x += bias;
     }
+    SDL_Log("%f, %f", *x, *z);
     if (*x > 0.0f)
     {
         *x = (int) (*x + center) / MODEL_SIZE;
