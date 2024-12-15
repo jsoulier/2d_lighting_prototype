@@ -48,7 +48,7 @@ float get_ray_light(
 {
     vec4 uv = u_ray_matrix * vec4(position, 1.0f);
     uv.xy = uv.xy * 0.5f + 0.5f;
-    const int kernel = 2;
+    const int kernel = 1;
     const vec2 size = 1.0f / vec2(textureSize(s_ray_light, 0));
     float light = 0.0f;
     for (int x = -kernel; x <= kernel; x++)

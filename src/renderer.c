@@ -26,6 +26,7 @@ enum
 enum
 {
     SAMPLER_NEAREST,
+    SAMPLER_LINEAR,
     SAMPLER_COUNT,
 };
 
@@ -507,6 +508,9 @@ static bool create_samplers()
     info[SAMPLER_NEAREST].min_filter = SDL_GPU_FILTER_NEAREST;
     info[SAMPLER_NEAREST].mag_filter = SDL_GPU_FILTER_NEAREST;
     info[SAMPLER_NEAREST].mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_NEAREST;
+    info[SAMPLER_LINEAR].min_filter = SDL_GPU_FILTER_LINEAR;
+    info[SAMPLER_LINEAR].mag_filter = SDL_GPU_FILTER_LINEAR;
+    info[SAMPLER_LINEAR].mipmap_mode = SDL_GPU_SAMPLERMIPMAPMODE_LINEAR;
     for (int i = 0; i < SAMPLER_COUNT; i++)
     {
         info[i].address_mode_u = SDL_GPU_SAMPLERADDRESSMODE_CLAMP_TO_EDGE;
@@ -974,7 +978,7 @@ void renderer_composite()
         tsb[1].texture = textures[TEXTURE_DEFAULT_POSITION];
         tsb[2].sampler = samplers[SAMPLER_NEAREST];
         tsb[2].texture = textures[TEXTURE_DEFAULT_NORMAL];
-        tsb[3].sampler = samplers[SAMPLER_NEAREST];
+        tsb[3].sampler = samplers[SAMPLER_LINEAR];
         tsb[3].texture = textures[TEXTURE_RAY_LIGHT];
         tsb[4].sampler = samplers[SAMPLER_NEAREST];
         tsb[4].texture = textures[TEXTURE_SUN_DEPTH];
