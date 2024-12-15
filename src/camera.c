@@ -252,11 +252,12 @@ void camera_init(
     camera->tz = 0.0f;
     camera->pitch = pitch;
     camera->yaw = yaw;
+    camera->width = width;
+    camera->height = height;
     camera->fov = rad(60.0f);
     camera->near = 1.0f;
     camera->far = 1000.0f;
     camera->speed = speed;
-    camera_set_viewport(camera, width, height);
 }
 
 void camera_update(

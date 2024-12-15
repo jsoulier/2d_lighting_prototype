@@ -44,7 +44,7 @@ int main(int argc, char** argv)
     model_t selected;
     database_get_state(&selected, &x, &z);
     SDL_SetWindowResizable(window, true);
-    SDL_SetWindowTitle(window, model_get_name(selected));
+    SDL_SetWindowTitle(window, model_get_str(selected));
     bool running = true;
     float cooldown = 0.0f;
     uint64_t t1 = SDL_GetPerformanceCounter();
@@ -73,7 +73,7 @@ int main(int argc, char** argv)
                 {
                     selected = 0;
                 }
-                SDL_SetWindowTitle(window, model_get_name(selected));
+                SDL_SetWindowTitle(window, model_get_str(selected));
                 break;
             }
         }

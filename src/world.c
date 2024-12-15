@@ -27,8 +27,8 @@ static int wz;
 static bool dirty;
 
 model_t world_get_model(
-    int x,
-    int z)
+    const int x,
+    const int z)
 {
     const int a = x - wx;
     const int b = z - wz;
@@ -42,8 +42,8 @@ model_t world_get_model(
 
 static void set_model(
     const model_t model,
-    int x,
-    int z)
+    const int x,
+    const int z)
 {
     const int a = x - wx;
     const int b = z - wz;
@@ -156,10 +156,10 @@ void world_update(
             SDL_GPUTransferBufferCreateInfo tbci = {0};
             tbci.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
             tbci.size = instances[model] * sizeof(float) * 4;
+            tbos[model] = SDL_CreateGPUTransferBuffer(device, &tbci);
             SDL_GPUBufferCreateInfo bci = {0};
             bci.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
             bci.size = instances[model] * sizeof(float) * 4;
-            tbos[model] = SDL_CreateGPUTransferBuffer(device, &tbci);
             vbos[model] = SDL_CreateGPUBuffer(device, &bci);
             if (!tbos[model] || !vbos[model])
             {
@@ -192,10 +192,10 @@ void world_update(
         SDL_GPUTransferBufferCreateInfo tbci = {0};
         tbci.usage = SDL_GPU_TRANSFERBUFFERUSAGE_UPLOAD;
         tbci.size = lights * sizeof(float) * 4;
+        light_tbo = SDL_CreateGPUTransferBuffer(device, &tbci);
         SDL_GPUBufferCreateInfo bci = {0};
         bci.usage = SDL_GPU_BUFFERUSAGE_GRAPHICS_STORAGE_READ;
         bci.size = lights * sizeof(float) * 4;
-        light_tbo = SDL_CreateGPUTransferBuffer(device, &tbci);
         light_sbo = SDL_CreateGPUBuffer(device, &bci);
         if (!light_tbo || !light_sbo)
         {
@@ -276,7 +276,7 @@ void world_update(
     dirty = false;
 }
 
-void world_render(
+void world_draw_models(
     SDL_GPUDevice* device,
     SDL_GPURenderPass* pass,
     SDL_GPUSampler* sampler)
@@ -309,7 +309,7 @@ void world_render(
     }
 }
 
-void world_render_lights(
+void world_draw_lights(
     SDL_GPUDevice* device,
     SDL_GPUCommandBuffer* commands,
     SDL_GPURenderPass* pass)
@@ -331,6 +331,7 @@ void world_set_model(
     const int x,
     const int z)
 {
+    assert(model < MODEL_COUNT);
     set_model(model, x, z);
     database_set_model(model, x, z);
     dirty = true;

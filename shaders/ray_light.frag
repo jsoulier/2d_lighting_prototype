@@ -44,7 +44,7 @@ bool raycast(
             break;
         }
         const vec3 neighbor = texture(s_position, uv.xy).xyz;
-        if (neighbor.y > position.y)
+        if (neighbor.y - 1.0f > position.y)
         {
             return false;
         }

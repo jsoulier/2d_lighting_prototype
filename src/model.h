@@ -3,10 +3,9 @@
 #include <SDL3/SDL.h>
 
 #define MODELS \
-    X(DIRT, 0) \
     X(GRASS, 0) \
-    X(LAVA, 50) \
-    X(LIGHTHOUSE, 100) \
+    X(DIRT, 0) \
+    X(WATER, 0) \
     X(ROCK1, 0) \
     X(ROCK2, 0) \
     X(ROCK3, 0) \
@@ -16,7 +15,8 @@
     X(TREE1, 0) \
     X(TREE2, 0) \
     X(TREE3, 0) \
-    X(WATER, 0) \
+    X(LAVA, 50) \
+    X(LIGHTHOUSE, 100) \
 
 typedef enum
 {
@@ -43,5 +43,5 @@ int model_get_height(
     const model_t model);
 int model_get_illuminance(
     const model_t model);
-const char* model_get_name(
+const char* model_get_str(
     const model_t model);

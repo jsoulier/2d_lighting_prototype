@@ -11,11 +11,11 @@ void world_update(
     const float z1,
     const float x2,
     const float z2);
-void world_render(
+void world_draw_models(
     SDL_GPUDevice* device,
     SDL_GPURenderPass* pass,
     SDL_GPUSampler* sampler);
-void world_render_lights(
+void world_draw_lights(
     SDL_GPUDevice* device,
     SDL_GPUCommandBuffer* commands,
     SDL_GPURenderPass* pass);

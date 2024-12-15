@@ -18,6 +18,8 @@ void main()
     o_uv = i_uv;
     o_normal = i_normal;
     gl_Position = u_matrix * o_position;
+
+    /* bias side facing tiles away to reduce z-fighting */
     const vec3 up = vec3(0.0f, 1.0f, 0.0f);
     const float factor = max(dot(up, o_normal), 0.0f);
     gl_Position.z -= factor * 0.001f;

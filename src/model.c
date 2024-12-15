@@ -31,7 +31,7 @@ struct
     int num_indices;
     int height;
     int illuminance;
-    char name[256];
+    char str[256];
 }
 static models[MODEL_COUNT];
 
@@ -55,7 +55,7 @@ static void func(
 
 static bool load(
     const model_t model,
-    const char* name,
+    const char* str,
     SDL_GPUDevice* device,
     SDL_GPUCopyPass* pass)
 {
@@ -67,8 +67,8 @@ static bool load(
     size_t num_materials;
     char obj[256];
     char png[256];
-    snprintf(obj, sizeof(obj), "%s.obj", name);
-    snprintf(png, sizeof(png), "%s.png", name);
+    snprintf(obj, sizeof(obj), "%s.obj", str);
+    snprintf(png, sizeof(png), "%s.png", str);
     if (tinyobj_parse_obj(
         &attrib,
         &shapes,
@@ -80,7 +80,7 @@ static bool load(
         NULL,
         TINYOBJ_FLAG_TRIANGULATE) != TINYOBJ_SUCCESS)
     {
-        SDL_Log("Failed to parse model: %s", name);
+        SDL_Log("Failed to parse model: %s", str);
         goto error;
     }
     models[model].height = 0;
@@ -88,7 +88,7 @@ static bool load(
     models[model].palette = load_texture(device, png);
     if (!models[model].palette)
     {
-        SDL_Log("Failed to load palette: %s", name);
+        SDL_Log("Failed to load palette: %s", str);
         goto error;
     }
     struct
@@ -100,7 +100,7 @@ static bool load(
     stbds_hmdefault(map, -1);
     if (!map)
     {
-        SDL_Log("Failed to create map: %ss", name);
+        SDL_Log("Failed to create map: %ss", str);
         goto error;
     }
     SDL_GPUTransferBufferCreateInfo tbci = {0};
@@ -111,14 +111,14 @@ static bool load(
     SDL_GPUTransferBuffer* ibo = SDL_CreateGPUTransferBuffer(device, &tbci);
     if (!vbo || !ibo)
     {
-        SDL_Log("Failed to create transfer buffer(s): %s, %s", name, SDL_GetError());
+        SDL_Log("Failed to create transfer buffer(s): %s, %s", str, SDL_GetError());
         goto error;
     }
     vertex_t* vertices = SDL_MapGPUTransferBuffer(device, vbo, false);
     uint32_t* indices = SDL_MapGPUTransferBuffer(device, ibo, false);
     if (!vertices || !indices)
     {
-        SDL_Log("Failed to map transfer buffer(s): %s, %s", name, SDL_GetError());
+        SDL_Log("Failed to map transfer buffer(s): %s, %s", str, SDL_GetError());
         goto error;
     }
     int num_vertices = 0;
@@ -127,7 +127,7 @@ static bool load(
         const tinyobj_vertex_index_t tvi = attrib.faces[i];
         if (tvi.v_idx < 0 || tvi.vn_idx < 0 || tvi.vt_idx < 0)
         {
-            SDL_Log("Missing model data: %s", name);
+            SDL_Log("Missing model data: %s", str);
             goto error;
         }
         vertex_t vertex;
@@ -154,17 +154,16 @@ static bool load(
     }
     SDL_UnmapGPUTransferBuffer(device, vbo);
     SDL_UnmapGPUTransferBuffer(device, ibo);
-    SDL_GPUBufferCreateInfo vbci = {0};
-    SDL_GPUBufferCreateInfo ibci = {0};
-    vbci.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
-    ibci.usage = SDL_GPU_BUFFERUSAGE_INDEX;
-    vbci.size = num_vertices * sizeof(vertex_t);
-    ibci.size = models[model].num_indices * sizeof(uint32_t);
-    models[model].vbo = SDL_CreateGPUBuffer(device, &vbci);
-    models[model].ibo = SDL_CreateGPUBuffer(device, &ibci);
+    SDL_GPUBufferCreateInfo bci = {0};
+    bci.usage = SDL_GPU_BUFFERUSAGE_VERTEX;
+    bci.size = num_vertices * sizeof(vertex_t);
+    models[model].vbo = SDL_CreateGPUBuffer(device, &bci);
+    bci.usage = SDL_GPU_BUFFERUSAGE_INDEX;
+    bci.size = models[model].num_indices * sizeof(uint32_t);
+    models[model].ibo = SDL_CreateGPUBuffer(device, &bci);
     if (!models[model].vbo || !models[model].ibo)
     {
-        SDL_Log("Failed to create model buffer(s): %s, %s", name, SDL_GetError());
+        SDL_Log("Failed to create model buffer(s): %s, %s", str, SDL_GetError());
         goto error;
     }
     SDL_GPUTransferBufferLocation location = {0};
@@ -223,7 +222,7 @@ bool model_init(
     for (model_t model = 0; model < MODEL_COUNT; model++)
     {
         const char* src = names[model];
-        char* dst = models[model].name;
+        char* dst = models[model].str;
         for (int i = 0; i < 256 && src[i]; i++)
         {
             dst[i] = tolower(src[i]);
@@ -311,9 +310,9 @@ int model_get_illuminance(
     return models[model].illuminance;
 }
 
-const char* model_get_name(
+const char* model_get_str(
     const model_t model)
 {
     assert(model < MODEL_COUNT);
-    return models[model].name;
+    return models[model].str;
 }
