@@ -27,7 +27,7 @@ float get_sun_light(
     const float depth = uv.z;
     uv.xy = uv.xy * 0.5f + 0.5f;
     uv.y = 1.0f - uv.y;
-    const int kernel = 4;
+    const int kernel = 2;
     const vec2 size = 1.0f / vec2(textureSize(s_sun_depth, 0));
     float sun = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
@@ -36,7 +36,7 @@ float get_sun_light(
         {
             const vec2 neighbor_uv = uv.xy + vec2(x, y) * size;
             const float neighbor_depth = texture(s_sun_depth, neighbor_uv).x;
-            sun += float(depth - 0.01f < neighbor_depth);
+            sun += float(depth - 0.02f < neighbor_depth);
         }
     }
     sun /= (kernel * 2 + 1) * (kernel * 2 + 1);
@@ -48,7 +48,7 @@ float get_ray_light(
 {
     vec4 uv = u_ray_matrix * vec4(position, 1.0f);
     uv.xy = uv.xy * 0.5f + 0.5f;
-    const int kernel = 4;
+    const int kernel = 2;
     const vec2 size = 1.0f / vec2(textureSize(s_ray_light, 0));
     float light = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
@@ -70,7 +70,7 @@ float get_ssao(
     const vec3 normal)
 {
     const int kernel = 4;
-    const vec2 size = 1.0f / vec2(textureSize(s_main_normal, 0));
+    const vec2 size = 2.0f / vec2(textureSize(s_main_normal, 0));
     float ssao = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
     {
@@ -79,12 +79,6 @@ float get_ssao(
             const vec2 neighbor_uv = i_uv + vec2(x, y) * size;
             const vec3 neighbor_normal = texture(s_main_normal, neighbor_uv).xyz;
             if (dot(normal, neighbor_normal) < 0.9f)
-            {
-                ssao += 1.0f;
-                continue;
-            }
-            const vec3 neighbor_position = texture(s_main_position, neighbor_uv).xyz;
-            if (abs(position.y - neighbor_position.y) > 1.0f)
             {
                 ssao += 1.0f;
                 continue;
@@ -114,6 +108,6 @@ void main()
     }
     light = max(light, get_ray_light(position) * 2.0f);
     light = min(light, 1.2f);
-    light -= get_ssao(color, position, normal) / 2.0f;
+    light -= get_ssao(color, position, normal) / 2.5f;
     o_color = color * light;
 }

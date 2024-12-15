@@ -18,21 +18,26 @@ layout(set = 3, binding = 1) uniform t_num_lights
     uint u_num_lights;
 };
 
-bool raycast(
+float raycast(
     const vec3 src,
     const vec3 dst,
     float spread)
 {
+    const float penetration = length(vec2(MODEL_SIZE, MODEL_SIZE));
+    /* TODO: increment by texel size in world space */
+    const float step = 1.0f;
     if (distance(dst, src) > spread)
     {
-        return false;
+        return 0.0f;
     }
     vec3 direction = dst - src;
-    spread = min(length(direction), spread);
+    spread = length(direction);
+    if (spread < penetration + PENETRATION_BIAS)
+    {
+        return SPREAD_COEFFICIENT / spread;
+    }
     direction = normalize(direction);
-    const float penetration = length(vec2(MODEL_SIZE, MODEL_SIZE));
-    const float step = 1.0f;
-    for (float i = 0.0f; i < spread - penetration; i += step)
+    for (float i = 1.0f; i < spread - penetration; i += step)
     {
         const vec3 position = src + direction * i;
         vec4 uv = u_matrix * vec4(position, 1.0f);
@@ -46,10 +51,10 @@ bool raycast(
         const vec3 neighbor = texture(s_position, uv.xy).xyz;
         if (neighbor.y - 1.0f > position.y)
         {
-            return false;
+            return 0.0f;
         }
     }
-    return true;
+    return SPREAD_COEFFICIENT / spread;
 }
 
 void main()
@@ -57,10 +62,7 @@ void main()
     const vec3 position = texture(s_position, i_uv).xyz;
     for (int i = 0; i < u_num_lights; i++)
     {
-        if (raycast(position, b_lights[i].xyz, b_lights[i].w))
-        {
-            o_light += 0.5f;
-        }
+        o_light = max(o_light, raycast(position, b_lights[i].xyz, b_lights[i].w));
         if (o_light >= 1.0f)
         {
             break;

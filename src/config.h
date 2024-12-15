@@ -10,5 +10,7 @@
 #define DATABASE_COOLDOWN 10
 #define PICK_BIAS 0.01f
 #define MOVE_SPEED 500.0f
+#define SPREAD_COEFFICIENT 20.0f
+#define PENETRATION_BIAS 8.0f
 
 #endif

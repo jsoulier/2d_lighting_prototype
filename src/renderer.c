@@ -936,6 +936,11 @@ void renderer_composite()
         scissor.y = rheight * RENDERER_OFFSCREEN / 4.0f;
         scissor.w = rwidth;
         scissor.h = rheight;
+        /* for PCF **/
+        scissor.x -= MODEL_SIZE;
+        scissor.y -= MODEL_SIZE;
+        scissor.w += MODEL_SIZE * 2;
+        scissor.h += MODEL_SIZE * 2;
         SDL_GPUTextureSamplerBinding tsb = {0};
         tsb.texture = textures[TEXTURE_RAY_POSITION];
         tsb.sampler = samplers[SAMPLER_NEAREST];

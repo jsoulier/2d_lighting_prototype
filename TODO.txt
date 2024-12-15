@@ -1,0 +1,1 @@
+- I should "shrink" the lit area slightly to reduce the flickering on the walls
