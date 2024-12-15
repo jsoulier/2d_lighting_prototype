@@ -36,7 +36,7 @@ float get_sun_light(
         {
             const vec2 neighbor_uv = uv.xy + vec2(x, y) * size;
             const float neighbor_depth = texture(s_sun_depth, neighbor_uv).x;
-            sun += float(depth - 0.02f < neighbor_depth);
+            sun += float(depth - 0.005f < neighbor_depth);
         }
     }
     sun /= (kernel * 2 + 1) * (kernel * 2 + 1);

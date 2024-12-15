@@ -457,29 +457,29 @@ static bool create_textures()
     {
         .format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
         .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
-        .width = rwidth * RENDERER_OFFSCREEN,
-        .height = rheight * RENDERER_OFFSCREEN,
+        .width = rwidth * RENDERER_RAY_OFFSCREEN,
+        .height = rheight * RENDERER_RAY_OFFSCREEN,
     };
     info[TEXTURE_RAY_POSITION] = (SDL_GPUTextureCreateInfo)
     {
         .format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT,
         .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
-        .width = rwidth * RENDERER_OFFSCREEN,
-        .height = rheight * RENDERER_OFFSCREEN,
+        .width = rwidth * RENDERER_RAY_OFFSCREEN,
+        .height = rheight * RENDERER_RAY_OFFSCREEN,
     };
     info[TEXTURE_RAY_LIGHT] = (SDL_GPUTextureCreateInfo)
     {
         .format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT,
         .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
-        .width = rwidth * RENDERER_OFFSCREEN,
-        .height = rheight * RENDERER_OFFSCREEN,
+        .width = rwidth * RENDERER_RAY_OFFSCREEN,
+        .height = rheight * RENDERER_RAY_OFFSCREEN,
     };
     info[TEXTURE_SUN_DEPTH] = (SDL_GPUTextureCreateInfo)
     {
         .format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
         .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
-        .width = RENDERER_WIDTH * RENDERER_OFFSCREEN,
-        .height = RENDERER_HEIGHT * RENDERER_OFFSCREEN,
+        .width = RENDERER_SUN_RESOLUTION_X,
+        .height = RENDERER_SUN_RESOLUTION_Y,
     };
     info[TEXTURE_COMPOSITE] = (SDL_GPUTextureCreateInfo)
     {
@@ -559,17 +559,17 @@ bool renderer_init(
         &ray_camera,
         CAMERA_TYPE_ORTHO_3D,
         0.0f,
-        rwidth * RENDERER_OFFSCREEN,
-        rheight * RENDERER_OFFSCREEN,
+        rwidth * RENDERER_RAY_OFFSCREEN,
+        rheight * RENDERER_RAY_OFFSCREEN,
         rad(-89.9f),
         0.0f,
         1.0f);
     camera_init(
         &sun_camera,
         CAMERA_TYPE_ORTHO_3D,
-        150.0f,
-        RENDERER_WIDTH * RENDERER_OFFSCREEN,
-        RENDERER_HEIGHT * RENDERER_OFFSCREEN,
+        0.0f,
+        RENDERER_WIDTH * RENDERER_SUN_OFFSCREEN,
+        RENDERER_HEIGHT * RENDERER_SUN_OFFSCREEN,
         rad(-45.0f),
         rad(-10.0f),
         1.0f);
@@ -936,8 +936,8 @@ void renderer_composite()
             goto error;
         }
         SDL_Rect scissor;
-        scissor.x = rwidth * RENDERER_OFFSCREEN / 4.0f;
-        scissor.y = rheight * RENDERER_OFFSCREEN / 4.0f;
+        scissor.x = rwidth * RENDERER_RAY_OFFSCREEN / 4.0f;
+        scissor.y = rheight * RENDERER_RAY_OFFSCREEN / 4.0f;
         scissor.w = rwidth;
         scissor.h = rheight;
         /* for PCF **/

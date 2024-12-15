@@ -34,7 +34,6 @@ model_t world_get_model(
     const int b = z - wz;
     if (a < 0 || b < 0 || a >= wwidth || b >= wheight)
     {
-        SDL_Log("Model out of bounds");
         return MODEL_COUNT;
     }
     return models[b * wwidth + a];
@@ -49,7 +48,6 @@ static void set_model(
     const int b = z - wz;
     if (a < 0 || b < 0 || a >= wwidth || b >= wheight)
     {
-        SDL_Log("Model out of bounds");
         return;
     }
     models[b * wwidth + a] = model;
