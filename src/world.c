@@ -320,7 +320,7 @@ void world_draw_lights(
         return;
     }
     SDL_BindGPUFragmentStorageBuffers(pass, 0, &light_sbo, 1);
-    SDL_PushGPUFragmentUniformData(commands, 1, &lights, 4);
+    SDL_PushGPUFragmentUniformData(commands, 3, &lights, 4);
     SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
 }
 
