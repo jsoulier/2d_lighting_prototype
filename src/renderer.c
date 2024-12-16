@@ -978,6 +978,7 @@ void renderer_composite()
         tsb[1].texture = textures[TEXTURE_DEFAULT_POSITION];
         tsb[2].sampler = samplers[SAMPLER_NEAREST];
         tsb[2].texture = textures[TEXTURE_DEFAULT_NORMAL];
+        /* TODO: with the ray backwards tracing, linear sampling shouldn't be needed */
         tsb[3].sampler = samplers[SAMPLER_LINEAR];
         tsb[3].texture = textures[TEXTURE_RAY_LIGHT];
         tsb[4].sampler = samplers[SAMPLER_NEAREST];

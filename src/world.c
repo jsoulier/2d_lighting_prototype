@@ -127,7 +127,7 @@ void world_update(
         {
             const model_t model = world_get_model(x, z);
             instances[model]++;
-            lights += model_get_illuminance(model) > 0;
+            lights += model_get_spread(model) > 0;
         }
     }
     float* mdata[MODEL_COUNT] = {0};
@@ -222,14 +222,14 @@ void world_update(
             mdata[model][instances[model] * 4 + 2] = z * MODEL_SIZE;
             mdata[model][instances[model] * 4 + 3] = 0.0f;
             instances[model]++;
-            if (model_get_illuminance(model) <= 0)
+            if (model_get_spread(model) <= 0)
             {
                 continue;
             }
             ldata[lights * 4 + 0] = x * MODEL_SIZE;
             ldata[lights * 4 + 1] = model_get_height(model);
             ldata[lights * 4 + 2] = z * MODEL_SIZE;
-            ldata[lights * 4 + 3] = model_get_illuminance(model);
+            ldata[lights * 4 + 3] = model_get_spread(model);
             lights++;
         }
     }

@@ -23,38 +23,66 @@ float raycast(
     const vec3 dst,
     float spread)
 {
-    const float penetration = length(vec2(MODEL_SIZE, MODEL_SIZE));
     /* TODO: increment by texel size in world space */
     const float step = 1.0f;
-    if (distance(dst, src) > spread)
+    if (distance(dst.xz, src.xz) > spread)
     {
         return 0.0f;
     }
     vec3 direction = dst - src;
-    spread = length(direction);
-    if (spread < penetration + PENETRATION_BIAS)
+    direction.y = 0;
+    spread = length(direction.xz);
+    if (spread < RAY_END)
     {
-        return SPREAD_COEFFICIENT / spread;
+        return SPREAD_COEFFICIENT / (spread + SPREAD_COEFFICIENT);
     }
     direction = normalize(direction);
-    for (float i = 1.0f; i < spread - penetration; i += step)
+
+    /* trace backwards along axes to prevent far edges from sampling light */
+    vec3 axis;
+    axis = vec3(sign(direction.x), 0.0f, 0.0f);
+    for (float i = RAY_START; i < 0.0f; i += step)
+    {
+        const vec3 position = src + axis * i;
+        vec4 uv = u_matrix * vec4(position, 1.0f);
+        uv.xyz /= uv.w;
+        uv.xyz = uv.xyz * 0.5f + 0.5f;
+        uv.y = 1.0f - uv.y;
+        const vec3 neighbor = texture(s_position, uv.xy).xyz;
+        if (neighbor.y + 1.0f < src.y)
+        {
+            return 0.0f;
+        }
+    }
+    axis = vec3(0.0f, 0.0f, sign(direction.z));
+    for (float i = RAY_START; i < 0.0f; i += step)
+    {
+        const vec3 position = src + axis * i;
+        vec4 uv = u_matrix * vec4(position, 1.0f);
+        uv.xyz /= uv.w;
+        uv.xyz = uv.xyz * 0.5f + 0.5f;
+        uv.y = 1.0f - uv.y;
+        const vec3 neighbor = texture(s_position, uv.xy).xyz;
+        if (neighbor.y + 1.0f < src.y)
+        {
+            return 0.0f;
+        }
+    }
+
+    for (float i = 0.0f; i < spread - RAY_END; i += step)
     {
         const vec3 position = src + direction * i;
         vec4 uv = u_matrix * vec4(position, 1.0f);
         uv.xyz /= uv.w;
         uv.xyz = uv.xyz * 0.5f + 0.5f;
         uv.y = 1.0f - uv.y;
-        if (uv.x <= 0.0f || uv.y <= 0.0f || uv.x > 1.0f || uv.y > 1.0f)
-        {
-            break;
-        }
         const vec3 neighbor = texture(s_position, uv.xy).xyz;
         if (neighbor.y - 1.0f > position.y)
         {
             return 0.0f;
         }
     }
-    return SPREAD_COEFFICIENT / spread;
+    return SPREAD_COEFFICIENT / (spread + SPREAD_COEFFICIENT);
 }
 
 void main()
