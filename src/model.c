@@ -30,7 +30,7 @@ struct
     SDL_GPUTexture* palette;
     int num_indices;
     int height;
-    int illuminance;
+    int spread;
     char str[256];
 }
 static models[MODEL_COUNT];
@@ -208,13 +208,13 @@ bool model_init(
     }
     const char* names[MODEL_COUNT] =
     {
-#define X(name, illuminance) #name,
+#define X(name, spread) #name,
         MODELS
 #undef X
     };
-    const int illuminances[MODEL_COUNT] =
+    const int spreads[MODEL_COUNT] =
     {
-#define X(name, illuminance) illuminance,
+#define X(name, spread) spread,
         MODELS
 #undef X
     };
@@ -227,7 +227,7 @@ bool model_init(
         {
             dst[i] = tolower(src[i]);
         }
-        models[model].illuminance = illuminances[model];
+        models[model].spread = spreads[model];
         if (!load(model, dst, device, pass))
         {
             SDL_Log("Failed to load model: %s", dst);
@@ -303,11 +303,11 @@ int model_get_height(
     return models[model].height;
 }
 
-int model_get_illuminance(
+int model_get_spread(
     const model_t model)
 {
     assert(model < MODEL_COUNT);
-    return models[model].illuminance;
+    return models[model].spread;
 }
 
 const char* model_get_str(
