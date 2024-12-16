@@ -4,8 +4,8 @@
 
 layout(location = 0) in vec2 i_uv;
 layout(location = 0) out float o_light;
-layout(set = 2, binding = 0) uniform sampler2D s_default_position;
-layout(set = 2, binding = 1) uniform sampler2D s_default_normal;
+layout(set = 2, binding = 0) uniform sampler2D s_position;
+layout(set = 2, binding = 1) uniform sampler2D s_normal;
 layout(set = 2, binding = 2) uniform sampler2D s_ray_position;
 layout(set = 2, binding = 3) uniform sampler2D s_sun_depth;
 layout(set = 2, binding = 4) buffer readonly t_lights
@@ -85,8 +85,8 @@ float get_sun_light(
 
 void main()
 {
-    const vec3 position = texture(s_default_position, i_uv).xyz;
-    const vec3 normal = texture(s_default_normal, i_uv).xyz;
+    const vec3 position = texture(s_position, i_uv).xyz;
+    const vec3 normal = texture(s_normal, i_uv).xyz;
     vec4 ray_uv = u_ray_matrix * vec4(position, 1.0f);
     ray_uv.xy = ray_uv.xy * 0.5f + 0.5f;
     ray_uv.y = 1.0f - ray_uv.y;
