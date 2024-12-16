@@ -5,73 +5,33 @@ layout(location = 0) out vec4 o_color;
 layout(set = 2, binding = 0) uniform sampler2D s_main_color;
 layout(set = 2, binding = 1) uniform sampler2D s_main_position;
 layout(set = 2, binding = 2) uniform sampler2D s_main_normal;
-layout(set = 2, binding = 3) uniform sampler2D s_ray_light;
-layout(set = 2, binding = 4) uniform sampler2D s_sun_depth;
-layout(set = 3, binding = 0) uniform t_ray_matrix
-{
-    mat4 u_ray_matrix;
-};
-layout(set = 3, binding = 1) uniform t_sun_matrix
-{
-    mat4 u_sun_matrix;
-};
-layout(set = 3, binding = 2) uniform t_sun_direction
-{
-    vec3 u_sun_direction;
-};
+layout(set = 2, binding = 3) uniform sampler2D s_light;
 
-float get_sun_light(
-    const vec3 position)
+float get_light()
 {
-    vec4 uv = u_sun_matrix * vec4(position, 1.0f);
-    const float depth = uv.z;
-    uv.xy = uv.xy * 0.5f + 0.5f;
-    uv.y = 1.0f - uv.y;
     const int kernel = 2;
-    const vec2 size = 1.0f / vec2(textureSize(s_sun_depth, 0));
-    float sun = 0.0f;
-    for (int x = -kernel; x <= kernel; x++)
-    {
-        for (int y = -kernel; y <= kernel; y++)
-        {
-            const vec2 neighbor_uv = uv.xy + vec2(x, y) * size;
-            const float neighbor_depth = texture(s_sun_depth, neighbor_uv).x;
-            sun += float(depth - 0.005f < neighbor_depth);
-        }
-    }
-    sun /= (kernel * 2 + 1) * (kernel * 2 + 1);
-    return sun;
-}
-
-float get_ray_light(
-    const vec3 position)
-{
-    vec4 uv = u_ray_matrix * vec4(position, 1.0f);
-    uv.xy = uv.xy * 0.5f + 0.5f;
-    const int kernel = 1;
-    const vec2 size = 1.0f / vec2(textureSize(s_ray_light, 0));
+    const vec2 size = 1.0f / vec2(textureSize(s_main_normal, 0));
     float light = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
     {
         for (int y = -kernel; y <= kernel; y++)
         {
-            const vec2 neighbor_uv = uv.xy + vec2(x, y) * size;
-            const float neighbor_light = texture(s_ray_light, neighbor_uv).x;
-            light += neighbor_light;
+            const vec2 neighbor_uv = i_uv + vec2(x, y) * size;
+            light += texture(s_light, neighbor_uv).x;
         }
     }
     light /= (kernel * 2 + 1) * (kernel * 2 + 1);
     return light;
 }
 
-float get_ssao(
+float get_edge(
     const vec4 color,
     const vec3 position,
     const vec3 normal)
 {
-    const int kernel = 4;
-    const vec2 size = 2.0f / vec2(textureSize(s_main_normal, 0));
-    float ssao = 0.0f;
+    const int kernel = 2;
+    const vec2 size = 1.0f / vec2(textureSize(s_main_normal, 0));
+    float edge = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
     {
         for (int y = -kernel; y <= kernel; y++)
@@ -80,19 +40,19 @@ float get_ssao(
             const vec3 neighbor_normal = texture(s_main_normal, neighbor_uv).xyz;
             if (dot(normal, neighbor_normal) < 0.9f)
             {
-                ssao += 1.0f;
+                edge += 1.0f;
                 continue;
             }
             const vec4 neighbor_color = texture(s_main_color, neighbor_uv);
             if (distance(color, neighbor_color) > 0.1f)
             {
-                ssao += 1.0f;
+                edge += 1.0f;
                 continue;
             }
         }
     }
-    ssao /= (kernel * 2 + 1) * (kernel * 2 + 1);
-    return ssao;
+    edge /= (kernel * 2 + 1) * (kernel * 2 + 1);
+    return edge;
 }
 
 void main()
@@ -100,14 +60,6 @@ void main()
     const vec4 color = texture(s_main_color, i_uv);
     const vec3 position = texture(s_main_position, i_uv).xyz;
     const vec3 normal = texture(s_main_normal, i_uv).xyz;
-    const float sun = max(dot(u_sun_direction, -normal), 0.0f);
-    float light = 0.2f;
-    if (sun > 0.0f)
-    {
-        light = max(light, get_sun_light(position) / 2.0f);
-    }
-    light = max(light, get_ray_light(position) * 2.0f);
-    light = min(light, 1.2f);
-    light -= get_ssao(color, position, normal) / 2.5f;
-    o_color = color * light;
+    const float edge = get_edge(color, position, normal) / 2.5f;
+    o_color = color * (get_light() - edge);
 }

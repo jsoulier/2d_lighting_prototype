@@ -18,6 +18,7 @@ layout(set = 3, binding = 1) uniform t_num_lights
     uint u_num_lights;
 };
 
+/* TODO: proper raycasting algorithm */
 float raycast(
     const vec3 src,
     const vec3 dst,
@@ -25,15 +26,15 @@ float raycast(
 {
     vec3 direction = dst - src;
     const float step = 1.0f;
-    const float intensity = 20.0f;
+    const float intensity = spread / 4.0f;
     const float spread2 = length(direction.xz);
-    const float spread3 = length(direction);
-    const float penetration2 = length(vec2(MODEL_SIZE, MODEL_SIZE)) / 2.0f;
-    const float penetration3 = penetration2 * spread3 / spread2;
     if (spread2 > spread)
     {
         return 0.0f;
     }
+    const float spread3 = length(direction);
+    const float penetration2 = length(vec2(MODEL_SIZE, MODEL_SIZE)) / 2.0f;
+    const float penetration3 = penetration2 * spread3 / spread2;
     if (spread2 < penetration2)
     {
         return intensity / (spread2 + intensity);
@@ -46,10 +47,6 @@ float raycast(
         uv.xyz /= uv.w;
         uv.xyz = uv.xyz * 0.5f + 0.5f;
         uv.y = 1.0f - uv.y;
-        if (uv.x <= 0.0f || uv.y <= 0.0f || uv.x > 1.0f || uv.y > 1.0f)
-        {
-            break;
-        }
         const vec3 neighbor = texture(s_position, uv.xy).xyz;
         if (neighbor.y - 1.0f > position.y)
         {

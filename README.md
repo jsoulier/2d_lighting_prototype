@@ -5,4 +5,4 @@ Combines an isometric and top-down orthographic view to support point shadows th
 
 ![](image.png)
 
-*~20 point shadows running at 768x432 in real-time at ~60 FPS with "SSAO" and sun shadows (on integrated Radeon Graphics)*
+*~20 point shadows running at 768x432 in real-time at ~60 FPS (on integrated Radeon Graphics)*

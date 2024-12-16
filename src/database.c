@@ -123,6 +123,7 @@ void database_set_state(
         SDL_Log("Failed to set state: %s", sqlite3_errmsg(handle));
     }
     sqlite3_reset(set_state_stmt);
+    database_commit();
 }
 
 void database_get_state(
@@ -162,6 +163,7 @@ void database_set_model(
         SDL_Log("Failed to set model: %s", sqlite3_errmsg(handle));
     }
     sqlite3_reset(set_model_stmt);
+    database_commit();
 }
 
 void database_get_models(

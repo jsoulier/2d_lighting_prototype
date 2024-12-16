@@ -39,14 +39,13 @@ int main(int argc, char** argv)
         SDL_Log("Failed to initialize database");
         return EXIT_FAILURE;
     }
-    float x = 0.0f;
-    float z = 0.0f;
     model_t selected;
+    float x;
+    float z;
     database_get_state(&selected, &x, &z);
     SDL_SetWindowResizable(window, true);
     SDL_SetWindowTitle(window, model_get_str(selected));
     bool running = true;
-    float cooldown = 0.0f;
     uint64_t t1 = SDL_GetPerformanceCounter();
     uint64_t t2 = 0;
     while (running)
@@ -164,12 +163,7 @@ int main(int argc, char** argv)
             }
         }
         renderer_blit();
-        cooldown += dt;
-        if (cooldown > DATABASE_COOLDOWN && database_commit())
-        {
-            database_set_state(selected, x, z);
-            cooldown = 0.0f;
-        }
+        database_set_state(selected, x, z);
     }
     world_free(device);
     database_set_state(selected, x, z);

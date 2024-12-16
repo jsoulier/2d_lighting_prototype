@@ -10,6 +10,18 @@
 #include "helpers.h"
 #include "model.h"
 
+struct
+{
+    SDL_GPUBuffer* vbo;
+    SDL_GPUBuffer* ibo;
+    SDL_GPUTexture* palette;
+    int num_indices;
+    int height;
+    int spread;
+    char str[256];
+}
+static models[MODEL_COUNT];
+
 typedef struct
 {
     float vx;
@@ -22,18 +34,6 @@ typedef struct
     float nz;
 }
 vertex_t;
-
-struct
-{
-    SDL_GPUBuffer* vbo;
-    SDL_GPUBuffer* ibo;
-    SDL_GPUTexture* palette;
-    int num_indices;
-    int height;
-    int spread;
-    char str[256];
-}
-static models[MODEL_COUNT];
 
 static void func(
     void* ctx,
