@@ -20,7 +20,7 @@
 
 typedef enum
 {
-#define X(name, illuminance) MODEL_##name,
+#define X(name, spread) MODEL_##name,
     MODELS
 #undef X
     MODEL_COUNT,
@@ -41,7 +41,7 @@ int model_get_num_indices(
     const model_t model);
 int model_get_height(
     const model_t model);
-int model_get_illuminance(
+int model_get_spread(
     const model_t model);
 const char* model_get_str(
     const model_t model);

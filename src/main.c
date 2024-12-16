@@ -77,8 +77,6 @@ int main(int argc, char** argv)
                 break;
             }
         }
-
-        /* move */
         {
             const bool* keys = SDL_GetKeyboardState(NULL);
             float dx = 0.0f;
@@ -102,8 +100,6 @@ int main(int argc, char** argv)
             x += dx * dt;
             z += dz * dt;
         }
-
-        /* update */
         {
             float x1;
             float z1;
@@ -113,11 +109,8 @@ int main(int argc, char** argv)
             renderer_get_bounds(&x1, &z1, &x2, &z2);
             world_update(device, x1, z1, x2, z2);
         }
-
         renderer_draw();
         renderer_composite();
-
-        /* pick */
         {
             float mx;
             float my;
@@ -170,10 +163,7 @@ int main(int argc, char** argv)
                 renderer_highlight(picked, mx, 0.0f, mz);
             }
         }
-
         renderer_blit();
-
-        /* commit */
         cooldown += dt;
         if (cooldown > DATABASE_COOLDOWN && database_commit())
         {

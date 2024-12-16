@@ -17,6 +17,7 @@ enum
     TEXTURE_DEFAULT_NORMAL,
     TEXTURE_RAY_DEPTH,
     TEXTURE_RAY_POSITION,
+    TEXTURE_RAY_EDGE,
     TEXTURE_RAY_LIGHT,
     TEXTURE_SUN_DEPTH,
     TEXTURE_COMPOSITE,
@@ -34,6 +35,7 @@ enum
 {
     GRAPHICS_DEFAULT_MODEL,
     GRAPHICS_RAY_MODEL,
+    GRAPHICS_RAY_EDGE,
     GRAPHICS_RAY_LIGHT,
     GRAPHICS_SUN_MODEL,
     GRAPHICS_HIGHLIGHT,
@@ -310,6 +312,19 @@ static bool create_pipelines()
             }},
         },
     };
+    info[GRAPHICS_RAY_EDGE] = (SDL_GPUGraphicsPipelineCreateInfo)
+    {
+        .vertex_shader = load_shader(device, "fullscreen.vert"),
+        .fragment_shader = load_shader(device, "ray_edge.frag"),
+        .target_info =
+        {
+            .num_color_targets = 1,
+            .color_target_descriptions = (SDL_GPUColorTargetDescription[])
+            {{
+                .format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT,
+            }},
+        },
+    };
     info[GRAPHICS_HIGHLIGHT] = (SDL_GPUGraphicsPipelineCreateInfo)
     {
         .vertex_shader = load_shader(device, "highlight.vert"),
@@ -468,6 +483,13 @@ static bool create_textures()
         .height = rheight * RENDERER_RAY_OFFSCREEN,
     };
     info[TEXTURE_RAY_LIGHT] = (SDL_GPUTextureCreateInfo)
+    {
+        .format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT,
+        .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        .width = rwidth * RENDERER_RAY_OFFSCREEN,
+        .height = rheight * RENDERER_RAY_OFFSCREEN,
+    };
+    info[TEXTURE_RAY_EDGE] = (SDL_GPUTextureCreateInfo)
     {
         .format = SDL_GPU_TEXTUREFORMAT_R32_FLOAT,
         .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
@@ -922,10 +944,43 @@ void renderer_composite()
         SDL_EndGPURenderPass(pass);
         SDL_PopGPUDebugGroup(commands);
     }
+    SDL_Rect scissor;
+    scissor.x = rwidth * RENDERER_RAY_OFFSCREEN / 4.0f;
+    scissor.y = rheight * RENDERER_RAY_OFFSCREEN / 4.0f;
+    scissor.w = rwidth;
+    scissor.h = rheight;
+    /* for PCF **/
+    scissor.x -= MODEL_SIZE;
+    scissor.y -= MODEL_SIZE;
+    scissor.w += MODEL_SIZE * 2;
+    scissor.h += MODEL_SIZE * 2;
+    {
+        SDL_PushGPUDebugGroup(commands, "ray_edge");
+        SDL_GPUColorTargetInfo cti = {0};
+        cti.load_op = SDL_GPU_LOADOP_DONT_CARE;
+        cti.store_op = SDL_GPU_STOREOP_STORE;
+        cti.texture = textures[TEXTURE_RAY_EDGE];
+        cti.cycle = true;
+        SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(commands, &cti, 1, NULL);
+        if (!pass)
+        {
+            SDL_Log("Failed to begin render pass: %s", SDL_GetError());
+            goto error;
+        }
+        SDL_GPUTextureSamplerBinding tsb = {0};
+        tsb.texture = textures[TEXTURE_RAY_POSITION];
+        tsb.sampler = samplers[SAMPLER_LINEAR];
+        SDL_BindGPUGraphicsPipeline(pass, graphics[GRAPHICS_RAY_EDGE]);
+        SDL_SetGPUScissor(pass, &scissor);
+        SDL_BindGPUFragmentSamplers(pass, 0, &tsb, 1);
+        SDL_DrawGPUPrimitives(pass, 4, 1, 0, 0);
+        SDL_EndGPURenderPass(pass);
+        SDL_PopGPUDebugGroup(commands);
+    }
     {
         SDL_PushGPUDebugGroup(commands, "ray_light");
         SDL_GPUColorTargetInfo cti = {0};
-        cti.load_op = SDL_GPU_LOADOP_CLEAR;
+        cti.load_op = SDL_GPU_LOADOP_DONT_CARE;
         cti.store_op = SDL_GPU_STOREOP_STORE;
         cti.texture = textures[TEXTURE_RAY_LIGHT];
         cti.cycle = true;
@@ -935,22 +990,14 @@ void renderer_composite()
             SDL_Log("Failed to begin render pass: %s", SDL_GetError());
             goto error;
         }
-        SDL_Rect scissor;
-        scissor.x = rwidth * RENDERER_RAY_OFFSCREEN / 4.0f;
-        scissor.y = rheight * RENDERER_RAY_OFFSCREEN / 4.0f;
-        scissor.w = rwidth;
-        scissor.h = rheight;
-        /* for PCF **/
-        scissor.x -= MODEL_SIZE;
-        scissor.y -= MODEL_SIZE;
-        scissor.w += MODEL_SIZE * 2;
-        scissor.h += MODEL_SIZE * 2;
-        SDL_GPUTextureSamplerBinding tsb = {0};
-        tsb.texture = textures[TEXTURE_RAY_POSITION];
-        tsb.sampler = samplers[SAMPLER_NEAREST];
+        SDL_GPUTextureSamplerBinding tsb[2] = {0};
+        tsb[0].texture = textures[TEXTURE_RAY_POSITION];
+        tsb[0].sampler = samplers[SAMPLER_NEAREST];
+        tsb[1].texture = textures[TEXTURE_RAY_EDGE];
+        tsb[1].sampler = samplers[SAMPLER_NEAREST];
         SDL_BindGPUGraphicsPipeline(pass, graphics[GRAPHICS_RAY_LIGHT]);
         SDL_SetGPUScissor(pass, &scissor);
-        SDL_BindGPUFragmentSamplers(pass, 0, &tsb, 1);
+        SDL_BindGPUFragmentSamplers(pass, 0, tsb, 2);
         SDL_PushGPUFragmentUniformData(commands, 0, ray_camera.matrix, 64);
         world_draw_lights(device, commands, pass);
         SDL_EndGPURenderPass(pass);

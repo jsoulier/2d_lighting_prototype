@@ -5,7 +5,8 @@
 layout(location = 0) in vec2 i_uv;
 layout(location = 0) out float o_light;
 layout(set = 2, binding = 0) uniform sampler2D s_position;
-layout(set = 2, binding = 1) buffer readonly t_lights
+layout(set = 2, binding = 1) uniform sampler2D s_edge;
+layout(set = 2, binding = 2) buffer readonly t_lights
 {
     vec4 b_lights[];
 };
@@ -21,10 +22,10 @@ layout(set = 3, binding = 1) uniform t_num_lights
 float raycast(
     const vec3 src,
     const vec3 dst,
-    float spread)
+    float spread,
+    const bool edge)
 {
     const float penetration = length(vec2(MODEL_SIZE, MODEL_SIZE));
-    /* TODO: increment by texel size in world space */
     const float step = 1.0f;
     if (distance(dst, src) > spread)
     {
@@ -34,7 +35,7 @@ float raycast(
     spread = length(direction);
     if (spread < penetration + PENETRATION_BIAS)
     {
-        return SPREAD_COEFFICIENT / spread;
+        return SPREAD_COEFFICIENT / (spread + SPREAD_COEFFICIENT);
     }
     direction = normalize(direction);
     for (float i = 1.0f; i < spread - penetration; i += step)
@@ -49,12 +50,17 @@ float raycast(
             break;
         }
         const vec3 neighbor = texture(s_position, uv.xy).xyz;
-        if (neighbor.y - 1.0f > position.y)
+        float bias = 1.0f;
+        if (edge)
+        {
+            bias = -EDGE_BIAS;
+        }
+        if (neighbor.y - bias > position.y)
         {
             return 0.0f;
         }
     }
-    return SPREAD_COEFFICIENT / spread;
+    return SPREAD_COEFFICIENT / (spread + SPREAD_COEFFICIENT);
 }
 
 void main()
@@ -62,7 +68,10 @@ void main()
     const vec3 position = texture(s_position, i_uv).xyz;
     for (int i = 0; i < u_num_lights; i++)
     {
-        o_light = max(o_light, raycast(position, b_lights[i].xyz, b_lights[i].w));
+        vec2 uv = i_uv;
+        uv.y = 1.0f - uv.y;
+        const bool edge = texture(s_edge, uv).x > 0.5f;
+        o_light = max(o_light, raycast(position, b_lights[i].xyz, b_lights[i].w, edge));
         if (o_light >= 1.0f)
         {
             break;
