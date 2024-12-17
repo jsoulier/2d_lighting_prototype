@@ -1,3 +1,7 @@
+/* TODO: Consider moving to a compute shader. Right now, there's likely 1 thread
+per fragment. If I create x light textures for x lights, I could do all the raycasts
+in parallel, allowing for number_of_fragments * x threads */
+
 #version 450
 
 #include "config.h"
@@ -32,7 +36,8 @@ layout(set = 3, binding = 3) uniform t_num_lights
 float get_ray_light(
     const vec3 src,
     const vec3 dst,
-    float spread)
+    const vec3 normal,
+    const float spread)
 {
     vec3 direction = dst - src;
     const float step = 1.0f;
@@ -45,11 +50,15 @@ float get_ray_light(
     const float spread3 = length(direction);
     const float penetration2 = length(vec2(MODEL_SIZE, MODEL_SIZE)) / 2.0f;
     const float penetration3 = penetration2 * spread3 / spread2;
+    direction = normalize(direction);
     if (spread2 < penetration2)
     {
         return intensity / (spread2 + intensity);
     }
-    direction = normalize(direction);
+    else if (normal.y < 0.1f && dot(direction.xz, normal.xz) < 0.0f)
+    {
+        return 0.0f;
+    }
     for (float i = 0.0f; i < spread3 - penetration3; i += step)
     {
         const vec3 position = src + direction * i;
@@ -90,7 +99,7 @@ void main()
     vec4 ray_uv = u_ray_matrix * vec4(position, 1.0f);
     ray_uv.xy = ray_uv.xy * 0.5f + 0.5f;
     ray_uv.y = 1.0f - ray_uv.y;
-    const vec3 ray_position = texture(s_ray_position, ray_uv.xy).xyz;
+    const vec3 src = texture(s_ray_position, ray_uv.xy).xyz;
     o_light = 0.2f;
     o_light = max(o_light, get_sun_light(position, normal) / 2.0f);
     for (int i = 0; i < u_num_lights; i++)
@@ -101,6 +110,6 @@ void main()
         }
         const vec3 dst = b_lights[i].xyz;
         const float spread = b_lights[i].w;
-        o_light = max(o_light, get_ray_light(ray_position, dst, spread));
+        o_light = max(o_light, get_ray_light(src, dst, normal, spread));
     }
 }
