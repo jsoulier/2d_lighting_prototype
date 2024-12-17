@@ -1,6 +1,4 @@
-/* TODO: Consider moving to a compute shader. Right now, there's likely 1 thread
-per fragment. If I create x light textures for x lights, I could do all the raycasts
-in parallel, allowing for number_of_fragments * x threads */
+/* TODO: could perform better in a compute shader by running the raycasts in parallel */
 
 #version 450
 
@@ -34,13 +32,15 @@ layout(set = 3, binding = 3) uniform t_num_lights
 };
 
 float get_ray_light(
+    const vec2 uv,
     const vec3 src,
     const vec3 dst,
     const vec3 normal,
     const float spread)
 {
     vec3 direction = dst - src;
-    const float step = 1.0f;
+    const float step1 = 1.0f;
+    const vec2 step2 = 1.0f / vec2(textureSize(s_ray_position, 0));
     const float intensity = spread / 4.0f;
     const float spread2 = length(direction.xz);
     if (spread2 > spread)
@@ -59,14 +59,12 @@ float get_ray_light(
     {
         return 0.0f;
     }
-    for (float i = 0.0f; i < spread3 - penetration3; i += step)
+    vec2 j = vec2(0.0f);
+    for (float i = 0.0f; i < spread3 - penetration3; i += step1, j += step2)
     {
         const vec3 position = src + direction * i;
-        vec4 uv = u_ray_matrix * vec4(position, 1.0f);
-        uv.xyz /= uv.w;
-        uv.xyz = uv.xyz * 0.5f + 0.5f;
-        uv.y = 1.0f - uv.y;
-        const vec3 neighbor = texture(s_ray_position, uv.xy).xyz;
+        const vec2 neighbor_uv = uv + direction.xz * j;
+        const vec3 neighbor = texture(s_ray_position, neighbor_uv).xyz;
         if (neighbor.y - 1.0f > position.y)
         {
             return 0.0f;
@@ -108,8 +106,11 @@ void main()
         {
             break;
         }
-        const vec3 dst = b_lights[i].xyz;
-        const float spread = b_lights[i].w;
-        o_light = max(o_light, get_ray_light(src, dst, normal, spread));
+        o_light = max(o_light, get_ray_light(
+            ray_uv.xy,
+            src,
+            b_lights[i].xyz,
+            normal,
+            b_lights[i].w));
     }
 }

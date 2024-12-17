@@ -10,7 +10,7 @@ layout(set = 2, binding = 3) uniform sampler2D s_light;
 float get_light(
     const vec3 position)
 {
-    const int kernel = 4;
+    const int kernel = 2;
     const vec2 size = 1.0f / vec2(textureSize(s_normal, 0));
     float light = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
