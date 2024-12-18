@@ -15,8 +15,10 @@ enum
     TEXTURE_DEPTH,
     TEXTURE_POSITION,
     TEXTURE_NORMAL,
-    TEXTURE_RAY_DEPTH,
-    TEXTURE_RAY_POSITION,
+    TEXTURE_RAY_DEPTH_FRONT,
+    TEXTURE_RAY_POSITION_FRONT,
+    TEXTURE_RAY_DEPTH_BACK,
+    TEXTURE_RAY_POSITION_BACK,
     TEXTURE_SUN_DEPTH,
     TEXTURE_LIGHT,
     TEXTURE_COMPOSITE,
@@ -33,7 +35,8 @@ enum
 enum
 {
     GRAPHICS_MODEL,
-    GRAPHICS_RAY_MODEL,
+    GRAPHICS_RAY_MODEL_FRONT,
+    GRAPHICS_RAY_MODEL_BACK,
     GRAPHICS_SUN_MODEL,
     GRAPHICS_HIGHLIGHT,
     GRAPHICS_LIGHT,
@@ -152,7 +155,7 @@ static bool create_pipelines()
             .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
         }
     };
-    info[GRAPHICS_RAY_MODEL] = (SDL_GPUGraphicsPipelineCreateInfo)
+    info[GRAPHICS_RAY_MODEL_FRONT] = (SDL_GPUGraphicsPipelineCreateInfo)
     {
         .vertex_shader = load_shader(device, "model.vert"),
         .fragment_shader = load_shader(device, "ray_model.frag"),
@@ -224,6 +227,81 @@ static bool create_pipelines()
         .rasterizer_state =
         {
             .cull_mode = SDL_GPU_CULLMODE_BACK,
+            .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
+        }
+    };
+    info[GRAPHICS_RAY_MODEL_BACK] = (SDL_GPUGraphicsPipelineCreateInfo)
+    {
+        .vertex_shader = load_shader(device, "model.vert"),
+        .fragment_shader = load_shader(device, "ray_model.frag"),
+        .target_info =
+        {
+            .num_color_targets = 1,
+            .color_target_descriptions = (SDL_GPUColorTargetDescription[])
+            {{
+                .format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT,
+            }},
+            .has_depth_stencil_target = true,
+            .depth_stencil_format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+        },
+        .vertex_input_state =
+        {
+            .num_vertex_attributes = 5,
+            .vertex_attributes = (SDL_GPUVertexAttribute[])
+            {{
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                .location = 0,
+                .offset = sizeof(float) * 0,
+                .buffer_slot = 0,
+            },
+            {
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT2,
+                .location = 1,
+                .offset = sizeof(float) * 3,
+                .buffer_slot = 0,
+            },
+            {
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                .location = 2,
+                .offset = sizeof(float) * 5,
+                .buffer_slot = 0,
+            },
+            {
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT3,
+                .location = 3,
+                .offset = sizeof(float) * 0,
+                .buffer_slot = 1,
+            },
+            {
+                .format = SDL_GPU_VERTEXELEMENTFORMAT_FLOAT,
+                .location = 4,
+                .offset = sizeof(float) * 3,
+                .buffer_slot = 1,
+            }},
+            .num_vertex_buffers = 2,
+            .vertex_buffer_descriptions = (SDL_GPUVertexBufferDescription[])
+            {{
+                .input_rate = SDL_GPU_VERTEXINPUTRATE_VERTEX,
+                .pitch = sizeof(float) * 8,
+                .instance_step_rate = 0,
+                .slot = 0,
+            },
+            {
+                .input_rate = SDL_GPU_VERTEXINPUTRATE_INSTANCE,
+                .pitch = sizeof(float) * 4,
+                .instance_step_rate = 1,
+                .slot = 1,
+            }},
+        },
+        .depth_stencil_state =
+        {
+            .enable_depth_test = true,
+            .enable_depth_write = true,
+            .compare_op = SDL_GPU_COMPAREOP_LESS,
+        },
+        .rasterizer_state =
+        {
+            .cull_mode = SDL_GPU_CULLMODE_FRONT,
             .front_face = SDL_GPU_FRONTFACE_COUNTER_CLOCKWISE,
         }
     };
@@ -453,14 +531,28 @@ static bool create_textures()
         .width = RENDERER_WIDTH,
         .height = RENDERER_HEIGHT,
     };
-    info[TEXTURE_RAY_DEPTH] = (SDL_GPUTextureCreateInfo)
+    info[TEXTURE_RAY_DEPTH_FRONT] = (SDL_GPUTextureCreateInfo)
     {
         .format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
         .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
         .width = rwidth * RENDERER_RAY_OFFSCREEN,
         .height = rheight * RENDERER_RAY_OFFSCREEN,
     };
-    info[TEXTURE_RAY_POSITION] = (SDL_GPUTextureCreateInfo)
+    info[TEXTURE_RAY_POSITION_FRONT] = (SDL_GPUTextureCreateInfo)
+    {
+        .format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT,
+        .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
+        .width = rwidth * RENDERER_RAY_OFFSCREEN,
+        .height = rheight * RENDERER_RAY_OFFSCREEN,
+    };
+    info[TEXTURE_RAY_DEPTH_BACK] = (SDL_GPUTextureCreateInfo)
+    {
+        .format = SDL_GPU_TEXTUREFORMAT_D32_FLOAT,
+        .usage = SDL_GPU_TEXTUREUSAGE_DEPTH_STENCIL_TARGET,
+        .width = rwidth * RENDERER_RAY_OFFSCREEN,
+        .height = rheight * RENDERER_RAY_OFFSCREEN,
+    };
+    info[TEXTURE_RAY_POSITION_BACK] = (SDL_GPUTextureCreateInfo)
     {
         .format = SDL_GPU_TEXTUREFORMAT_R32G32B32A32_FLOAT,
         .usage = SDL_GPU_TEXTUREUSAGE_COLOR_TARGET | SDL_GPU_TEXTUREUSAGE_SAMPLER,
@@ -876,18 +968,18 @@ void renderer_composite()
         return;
     }
     {
-        SDL_PushGPUDebugGroup(commands, "ray_model");
+        SDL_PushGPUDebugGroup(commands, "ray_model_front");
         SDL_GPUColorTargetInfo cti = {0};
         cti.load_op = SDL_GPU_LOADOP_DONT_CARE;
         cti.store_op = SDL_GPU_STOREOP_STORE;
-        cti.texture = textures[TEXTURE_RAY_POSITION];
+        cti.texture = textures[TEXTURE_RAY_POSITION_FRONT];
         cti.cycle = true;
         SDL_GPUDepthStencilTargetInfo dsti = {0};
         dsti.clear_depth = 1.0f;
         dsti.load_op = SDL_GPU_LOADOP_CLEAR;
         dsti.stencil_load_op = SDL_GPU_LOADOP_CLEAR;
         dsti.store_op = SDL_GPU_STOREOP_STORE;
-        dsti.texture = textures[TEXTURE_RAY_DEPTH];
+        dsti.texture = textures[TEXTURE_RAY_DEPTH_FRONT];
         dsti.cycle = true;
         SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(commands, &cti, 1, &dsti);
         if (!pass)
@@ -895,7 +987,33 @@ void renderer_composite()
             SDL_Log("Failed to begin render pass: %s", SDL_GetError());
             goto error;
         }
-        SDL_BindGPUGraphicsPipeline(pass, graphics[GRAPHICS_RAY_MODEL]);
+        SDL_BindGPUGraphicsPipeline(pass, graphics[GRAPHICS_RAY_MODEL_FRONT]);
+        SDL_PushGPUVertexUniformData(commands, 0, ray_camera.matrix, 64);
+        world_draw_models(device, pass, NULL);
+        SDL_EndGPURenderPass(pass);
+        SDL_PopGPUDebugGroup(commands);
+    }
+    {
+        SDL_PushGPUDebugGroup(commands, "ray_model_back");
+        SDL_GPUColorTargetInfo cti = {0};
+        cti.load_op = SDL_GPU_LOADOP_DONT_CARE;
+        cti.store_op = SDL_GPU_STOREOP_STORE;
+        cti.texture = textures[TEXTURE_RAY_POSITION_BACK];
+        cti.cycle = true;
+        SDL_GPUDepthStencilTargetInfo dsti = {0};
+        dsti.clear_depth = 1.0f;
+        dsti.load_op = SDL_GPU_LOADOP_CLEAR;
+        dsti.stencil_load_op = SDL_GPU_LOADOP_CLEAR;
+        dsti.store_op = SDL_GPU_STOREOP_STORE;
+        dsti.texture = textures[TEXTURE_RAY_DEPTH_BACK];
+        dsti.cycle = true;
+        SDL_GPURenderPass* pass = SDL_BeginGPURenderPass(commands, &cti, 1, &dsti);
+        if (!pass)
+        {
+            SDL_Log("Failed to begin render pass: %s", SDL_GetError());
+            goto error;
+        }
+        SDL_BindGPUGraphicsPipeline(pass, graphics[GRAPHICS_RAY_MODEL_BACK]);
         SDL_PushGPUVertexUniformData(commands, 0, ray_camera.matrix, 64);
         world_draw_models(device, pass, NULL);
         SDL_EndGPURenderPass(pass);
@@ -925,7 +1043,7 @@ void renderer_composite()
     {
         SDL_PushGPUDebugGroup(commands, "light");
         SDL_GPUColorTargetInfo cti = {0};
-        cti.load_op = SDL_GPU_LOADOP_DONT_CARE;
+        cti.load_op = SDL_GPU_LOADOP_CLEAR;
         cti.store_op = SDL_GPU_STOREOP_STORE;
         cti.texture = textures[TEXTURE_LIGHT];
         cti.cycle = true;
@@ -937,17 +1055,19 @@ void renderer_composite()
         }
         float sun[3];
         camera_get_vector(&sun_camera, &sun[0], &sun[1], &sun[2]);
-        SDL_GPUTextureSamplerBinding tsb[4] = {0};
+        SDL_GPUTextureSamplerBinding tsb[5] = {0};
         tsb[0].sampler = samplers[SAMPLER_NEAREST];
         tsb[0].texture = textures[TEXTURE_POSITION];
         tsb[1].sampler = samplers[SAMPLER_NEAREST];
         tsb[1].texture = textures[TEXTURE_NORMAL];
         tsb[2].sampler = samplers[SAMPLER_LINEAR];
-        tsb[2].texture = textures[TEXTURE_RAY_POSITION];
-        tsb[3].sampler = samplers[SAMPLER_NEAREST];
-        tsb[3].texture = textures[TEXTURE_SUN_DEPTH];
+        tsb[2].texture = textures[TEXTURE_RAY_POSITION_FRONT];
+        tsb[3].sampler = samplers[SAMPLER_LINEAR];
+        tsb[3].texture = textures[TEXTURE_RAY_POSITION_BACK];
+        tsb[4].sampler = samplers[SAMPLER_NEAREST];
+        tsb[4].texture = textures[TEXTURE_SUN_DEPTH];
         SDL_BindGPUGraphicsPipeline(pass, graphics[GRAPHICS_LIGHT]);
-        SDL_BindGPUFragmentSamplers(pass, 0, tsb, 4);
+        SDL_BindGPUFragmentSamplers(pass, 0, tsb, 5);
         SDL_PushGPUFragmentUniformData(commands, 0, ray_camera.matrix, 64);
         SDL_PushGPUFragmentUniformData(commands, 1, sun_camera.matrix, 64);
         SDL_PushGPUFragmentUniformData(commands, 2, sun, sizeof(sun));

@@ -8,9 +8,10 @@ layout(location = 0) in vec2 i_uv;
 layout(location = 0) out float o_light;
 layout(set = 2, binding = 0) uniform sampler2D s_position;
 layout(set = 2, binding = 1) uniform sampler2D s_normal;
-layout(set = 2, binding = 2) uniform sampler2D s_ray_position;
-layout(set = 2, binding = 3) uniform sampler2D s_sun_depth;
-layout(set = 2, binding = 4) buffer readonly t_lights
+layout(set = 2, binding = 2) uniform sampler2D s_ray_position_front;
+layout(set = 2, binding = 3) uniform sampler2D s_ray_position_back;
+layout(set = 2, binding = 4) uniform sampler2D s_sun_depth;
+layout(set = 2, binding = 5) buffer readonly t_lights
 {
     vec4 b_lights[];
 };
@@ -31,41 +32,75 @@ layout(set = 3, binding = 3) uniform t_num_lights
     uint u_num_lights;
 };
 
+/**
+ * @param uv The uvs into the topdown ortho texture
+ * @param psrc The world space coordinates of the fragment (perspective)
+ * @param osrc The world space coordinates of the fragment (ortho)
+ * The osrc parameter loses the height of the fragment. e.g. Fragments under a
+ * tree may be interpreted as the fragments on top of the tree
+ * @param dst The world space coordinates of the light
+ * @param normal
+ * @param spread
+ */
 float get_ray_light(
     const vec2 uv,
-    const vec3 src,
+    const vec3 psrc,
+    const vec3 osrc,
     const vec3 dst,
     const vec3 normal,
     const float spread)
 {
-    vec3 direction = dst - src;
+    /* Above the light */
+    if (osrc.y - 1.0f > dst.y)
+    {
+        return 0.0f;
+    }
+    vec3 pdirection = dst - psrc;
+    vec3 odirection = dst - osrc;
     const float step1 = 1.0f;
-    const vec2 step2 = 1.0f / vec2(textureSize(s_ray_position, 0));
+    const vec2 step2 = 1.0f / vec2(textureSize(s_ray_position_front, 0));
     const float intensity = spread / 4.0f;
-    const float spread2 = length(direction.xz);
+    const float spread2 = length(odirection.xz);
+    /* Out of the effective range */
     if (spread2 > spread)
     {
         return 0.0f;
     }
-    const float spread3 = length(direction);
+    const float spread3 = length(odirection);
     const float penetration2 = length(vec2(MODEL_SIZE, MODEL_SIZE)) / 2.0f;
     const float penetration3 = penetration2 * spread3 / spread2;
-    direction = normalize(direction);
+    pdirection = normalize(pdirection);
+    odirection = normalize(odirection);
+    /* Inside the light model */
     if (spread2 < penetration2)
     {
         return intensity / (spread2 + intensity);
     }
-    else if (normal.y < 0.1f && dot(direction.xz, normal.xz) < 0.0f)
+    /* Is side face and facing away from light */
+    else if (normal.y < 0.1f && dot(odirection.xz, normal.xz) < 0.0f)
     {
         return 0.0f;
     }
     vec2 j = vec2(0.0f);
     for (float i = 0.0f; i < spread3 - penetration3; i += step1, j += step2)
     {
-        const vec3 position = src + direction * i;
-        const vec2 neighbor_uv = uv + direction.xz * j;
-        const vec3 neighbor = texture(s_ray_position, neighbor_uv).xyz;
-        if (neighbor.y - 1.0f > position.y)
+        const vec3 oposition = osrc + odirection * i;
+        const vec2 neighbor_uv = uv + odirection.xz * j;
+        const vec3 neighbor_front = texture(s_ray_position_front, neighbor_uv).xyz;
+        /* Heightmap check */
+        if (neighbor_front.y - 1.0f > oposition.y)
+        {
+            return 0.0f;
+        }
+        /* Required because raycasts can travel along walls, putting them inside it */
+        if (i < 16.0f)
+        {
+            continue;
+        }
+        const vec3 pposition = psrc + pdirection * i;
+        const vec3 neighbor_back = texture(s_ray_position_back, neighbor_uv).xyz;
+        /* If between front and back face */
+        if (pposition.y - 1.0f > neighbor_back.y && pposition.y + 1.0f < neighbor_front.y)
         {
             return 0.0f;
         }
@@ -92,23 +127,20 @@ float get_sun_light(
 
 void main()
 {
-    const vec3 position = texture(s_position, i_uv).xyz;
+    const vec3 pposition = texture(s_position, i_uv).xyz;
     const vec3 normal = texture(s_normal, i_uv).xyz;
-    vec4 ray_uv = u_ray_matrix * vec4(position, 1.0f);
-    ray_uv.xy = ray_uv.xy * 0.5f + 0.5f;
-    ray_uv.y = 1.0f - ray_uv.y;
-    const vec3 src = texture(s_ray_position, ray_uv.xy).xyz;
+    vec4 uv = u_ray_matrix * vec4(pposition, 1.0f);
+    uv.xy = uv.xy * 0.5f + 0.5f;
+    uv.y = 1.0f - uv.y;
+    const vec3 oposition = texture(s_ray_position_front, uv.xy).xyz;
     o_light = 0.2f;
-    o_light = max(o_light, get_sun_light(position, normal) / 2.0f);
-    for (int i = 0; i < u_num_lights; i++)
+    o_light = max(o_light, get_sun_light(pposition, normal) / 2.0f);
+    for (int i = 0; i < u_num_lights && o_light < 1.0f; i++)
     {
-        if (o_light >= 1.0f)
-        {
-            break;
-        }
         o_light = max(o_light, get_ray_light(
-            ray_uv.xy,
-            src,
+            uv.xy,
+            pposition,
+            oposition,
             b_lights[i].xyz,
             normal,
             b_lights[i].w));
