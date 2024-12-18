@@ -16,7 +16,7 @@
     X(TREE2, 0) \
     X(TREE3, 0) \
     X(LAVA, 50) \
-    X(LIGHTHOUSE, 100) \
+    X(LIGHTHOUSE, 150) \
 
 typedef enum
 {

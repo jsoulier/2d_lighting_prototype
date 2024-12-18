@@ -10,7 +10,7 @@ layout(set = 2, binding = 3) uniform sampler2D s_light;
 float get_light(
     const vec3 position)
 {
-    const int kernel = 3;
+    const int kernel = 1;
     const vec2 size = 1.0f / vec2(textureSize(s_normal, 0));
     float light = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
@@ -33,14 +33,14 @@ float get_light(
     return light;
 }
 
-float get_edge(
+float get_ssao(
     const vec4 color,
     const vec3 position,
     const vec3 normal)
 {
-    const int kernel = 1;
+    const int kernel = 4;
     const vec2 size = 1.0f / vec2(textureSize(s_normal, 0));
-    float edge = 0.0f;
+    float ssao = 0.0f;
     for (int x = -kernel; x <= kernel; x++)
     {
         for (int y = -kernel; y <= kernel; y++)
@@ -49,19 +49,19 @@ float get_edge(
             const vec3 neighbor_normal = texture(s_normal, neighbor_uv).xyz;
             if (dot(normal, neighbor_normal) < 0.9f)
             {
-                edge += 1.0f;
+                ssao += 1.0f;
                 continue;
             }
             const vec4 neighbor_color = texture(s_color, neighbor_uv);
             if (distance(color, neighbor_color) > 0.1f)
             {
-                edge += 1.0f;
+                ssao += 1.0f;
                 continue;
             }
         }
     }
-    edge /= (kernel * 2 + 1) * (kernel * 2 + 1);
-    return edge;
+    ssao /= (kernel * 2 + 1) * (kernel * 2 + 1);
+    return ssao;
 }
 
 void main()
@@ -70,6 +70,6 @@ void main()
     const vec3 position = texture(s_position, i_uv).xyz;
     const vec3 normal = texture(s_normal, i_uv).xyz;
     const float light = get_light(position);
-    const float edge = get_edge(color, position, normal) / 2.5f;
-    o_color = color * (light - edge);
+    const float ssao = get_ssao(color, position, normal) / 4.0f;
+    o_color = color * (light - ssao);
 }
