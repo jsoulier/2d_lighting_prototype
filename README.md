@@ -10,12 +10,11 @@ Steps:
 1. Render scene (deferred) from player view
 2. Render the same scene from a topdown orthographic view using back face culling
 3. Render the same scene from a topdown orthographic view using front face culling
-4. For each fragment, sample the world space position and convert to topdown orthographic (world space)
-5. Walk the topdown orthographic position to each light and cull if any positions are above the current
-6. Walk the original world space position to each light and cull if between the front and back face
-7. (optional) Combine with directional shadow mapping
+4. Sample the world space position (ray origin) for each fragment
+5. Walk the ray to each light and cull if between the front and back face
+6. (optional) Add directional shadows, SSAO, and apply PCF
 
-See the implementation [here](shaders/light.frag)
+See the raycast implementation [here](shaders/light.frag)
 
 ### Building
 
@@ -33,3 +32,4 @@ cd bin
 ### Known Bugs
 
 - If there are no lights in the scene, the screen will be entirely black
+- There's no depth peeling so models with multiple back faces will have incorrect lighting

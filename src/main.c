@@ -17,7 +17,7 @@ int main(int argc, char** argv)
         SDL_Log("Failed to initialize SDL: %s", SDL_GetError());
         return EXIT_FAILURE;
     }
-    SDL_Window* window = window = SDL_CreateWindow("prototype", RENDERER_WIDTH, RENDERER_HEIGHT, 0);
+    SDL_Window* window = window = SDL_CreateWindow("", WINDOW_WIDTH, WINDOW_HEIGHT, 0);
     if (!window)
     {
         SDL_Log("Failed to create window: %s", SDL_GetError());
@@ -82,19 +82,19 @@ int main(int argc, char** argv)
             float dz = 0.0f;
             if (keys[SDL_SCANCODE_W])
             {
-                dz -= MOVE_SPEED;
+                dz -= SPEED;
             }
             else if (keys[SDL_SCANCODE_S])
             {
-                dz += MOVE_SPEED;
+                dz += SPEED;
             }
             if (keys[SDL_SCANCODE_D])
             {
-                dx += MOVE_SPEED;
+                dx += SPEED;
             }
             else if (keys[SDL_SCANCODE_A])
             {
-                dx -= MOVE_SPEED;
+                dx -= SPEED;
             }
             x += dx * dt;
             z += dz * dt;
