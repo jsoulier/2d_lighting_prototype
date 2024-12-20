@@ -829,7 +829,7 @@ success:
     SDL_SubmitGPUCommandBuffer(commands);
 }
 
-void renderer_get_position(
+void renderer_pick(
     float* x,
     float* y,
     float* z)
@@ -854,7 +854,7 @@ void renderer_get_position(
         SDL_Log("Failed to acquire command buffer: %s", SDL_GetError());
         return;
     }
-    SDL_PushGPUDebugGroup(commands, "get_position");
+    SDL_PushGPUDebugGroup(commands, "pick");
     SDL_GPUStorageBufferReadWriteBinding sbb = {0};
     sbb.buffer = sampler_sbo;
     sbb.cycle = true;

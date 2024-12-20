@@ -118,7 +118,7 @@ int main(int argc, char** argv)
             SDL_GetWindowSizeInPixels(window, &width, NULL);
             SDL_GetMouseState(&mx, &my);
             const float sx = mx;
-            renderer_get_position(&mx, &my, &mz);
+            renderer_pick(&mx, &my, &mz);
             width /= 2;
             mz -= PICK_BIAS;
             if (sx < width)

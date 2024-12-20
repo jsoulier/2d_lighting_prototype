@@ -12,7 +12,7 @@ void renderer_update(
     const float x,
     const float z);
 void renderer_draw();
-void renderer_get_position(
+void renderer_pick(
     float* x,
     float* y,
     float* z);
